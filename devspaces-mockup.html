@@ -343,12 +343,129 @@ function renderDiff(fileKey) {
 function showFile(fileKey) { renderDiff(fileKey); }
 
 const params = new URLSearchParams(window.location.search);
+const state = params.get('state') || 'pr-review';
 const branch = params.get('branch') || 'apme/remediate-rhel-patching';
-document.getElementById('pr-branch-label').textContent = branch;
-document.getElementById('branch-name').textContent = branch;
-document.getElementById('titlebar-text').textContent = 'PR #99 · ' + branch + ' — Dev Spaces';
 
-renderDiff('main');
+if (state === 'edit') {
+  const file = params.get('file') || 'tasks/main.yml';
+  const line = parseInt(params.get('line') || '1', 10);
+  const rule = params.get('rule') || '';
+  const shortFile = file.split('/').pop();
+
+  document.getElementById('titlebar-text').textContent = shortFile + ' — Dev Spaces';
+  document.getElementById('branch-name').textContent = branch;
+  document.getElementById('pr-branch-label').textContent = branch;
+  document.getElementById('tab-label').textContent = file;
+  document.getElementById('diff-filename').textContent = file;
+
+  document.querySelector('.scm-info').innerHTML =
+    'Editing <strong>' + file + '</strong><br>' +
+    'Branch: <span class="branch">' + branch + '</span><br>' +
+    '<span style="color:#c17e19;">⚠ Line ' + line + ' — ' + rule + '</span>';
+
+  document.querySelector('.scm-section').innerHTML = '';
+  document.querySelector('.summary-bar').innerHTML =
+    '<span class="icon" style="color:#c17e19;">⚠</span>' +
+    '<span class="text" style="color:#c17e19;"><strong>' + rule + '</strong> at line ' + line + ' in <strong>' + shortFile + '</strong>. Review and fix the violation in context.</span>';
+
+  document.querySelector('.diff-header').innerHTML =
+    '<span class="branch-label branch-base">' + branch + '</span>' +
+    '<span style="margin-left: 8px;" class="filename">' + file + '</span>';
+
+  var EDIT_FILES = {
+    'playbook-l057-wrong-module.yml': [
+      { num: 1, html: '<span class="comment"># playbook-l057-wrong-module.yml — RHEL Patching</span>' },
+      { num: 2, html: '<span class="key">---</span>' },
+      { num: 3, html: '<span class="kw">- name</span>: <span class="str">RHEL patching automation</span>' },
+      { num: 4, html: '  <span class="key">hosts</span>: <span class="str">rhel_servers</span>' },
+      { num: 5, html: '  <span class="key">become</span>: <span class="bool">true</span>' },
+      { num: 6, html: '  <span class="key">gather_facts</span>: <span class="bool">true</span>' },
+      { num: 7, html: '' },
+      { num: 8, html: '  <span class="key">vars</span>:' },
+      { num: 9, html: '    <span class="key">packages</span>:' },
+      { num: 10, html: '      <span class="str">- kernel</span>' },
+      { num: 11, html: '      <span class="str">- openssl</span>' },
+      { num: 12, html: '' },
+      { num: 13, html: '  <span class="key">tasks</span>:' },
+      { num: 14, html: '    <span class="kw">- name</span>: <span class="str">Check current patch level</span>' },
+      { num: 15, html: '      <span class="module">ansible.builtin.command</span>:' },
+      { num: 16, html: '        <span class="key">cmd</span>: <span class="str">rpm -qa --last</span>' },
+      { num: 17, html: '      <span class="key">register</span>: <span class="str">patch_level</span>' },
+      { num: 18, html: '' },
+      { num: 19, html: '    <span class="kw">- name</span>: <span class="str">Install prerequisites</span>' },
+      { num: 20, html: '      <span class="module">ansible.builtin.yum</span>:' },
+      { num: 21, html: '        <span class="key">name</span>: <span class="str">"{{ prereq_packages }}"</span>' },
+      { num: 22, html: '        <span class="key">state</span>: <span class="str">present</span>' },
+      { num: 23, html: '' },
+      { num: 24, html: '    <span class="kw">- name</span>: <span class="str">Copy patching script</span>' },
+      { num: 25, html: '      <span class="module">copy</span>:' },
+      { num: 26, html: '        <span class="key">src</span>: <span class="str">files/patch.sh</span>' },
+      { num: 27, html: '        <span class="key">dest</span>: <span class="str">/tmp/patch.sh</span>' },
+      { num: 28, html: '        <span class="key">mode</span>: <span class="str">"0755"</span>' },
+      { num: 29, html: '' },
+      { num: 30, html: '    <span class="kw">- name</span>: <span class="str">Write patch report</span>' },
+      { num: 31, html: '      <span class="module">ansible.builtin.copy</span>:' },
+      { num: 32, html: '        <span class="key">content</span>: <span class="str">"{{ patch_results | to_nice_yaml }}"</span>' },
+      { num: 33, html: '        <span class="key">dest</span>: <span class="str">/var/log/patch-report.yml</span>' },
+      { num: 34, html: '' },
+      { num: 35, html: '    <span class="kw">- name</span>: <span class="str">Apply security updates</span>' },
+      { num: 36, html: '      <span class="module">ansible.builtin.dnf</span>:' },
+      { num: 37, html: '        <span class="key">name</span>: <span class="str">"{{ item }}"</span>' },
+      { num: 38, html: '      <span class="kw">with_items</span>: <span class="str">"{{ packages }}"</span>' },
+    ],
+    'roles/broken_role/tasks/main.yml': [
+      { num: 1, html: '<span class="comment"># roles/broken_role/tasks/main.yml</span>' },
+      { num: 2, html: '<span class="key">---</span>' },
+      { num: 3, html: '<span class="module">- ansible.builtin.file</span>:' },
+      { num: 4, html: '    <span class="key">path</span>: <span class="str">/var/backup/rollback</span>' },
+      { num: 5, html: '    <span class="key">state</span>: <span class="str">directory</span>' },
+      { num: 6, html: '' },
+      { num: 7, html: '<span class="kw">- name</span>: <span class="str">Copy role config</span>' },
+      { num: 8, html: '  <span class="module">ansible.builtin.template</span>:' },
+      { num: 9, html: '    <span class="key">src</span>: <span class="str">config.j2</span>' },
+      { num: 10, html: '    <span class="key">dest</span>: <span class="str">/etc/app/config.yml</span>' },
+    ],
+    'group_vars/all/secrets.yml': [
+      { num: 1, html: '<span class="comment"># group_vars/all/secrets.yml</span>' },
+      { num: 2, html: '<span class="key">---</span>' },
+      { num: 3, html: '<span class="key">slack_token</span>: <span class="str">"xoxb-1234567890-abcdef"</span>' },
+      { num: 4, html: '<span class="key">api_endpoint</span>: <span class="str">"https://api.example.com"</span>' },
+      { num: 5, html: '<span class="key">notify_channel</span>: <span class="str">"#ops-alerts"</span>' },
+    ],
+    'templates/app.conf.j2': [
+      { num: 1, html: '<span class="comment"># templates/app.conf.j2</span>' },
+      { num: 2, html: '<span class="key">server_name</span> = <span class="str">{{hostname}}</span>' },
+      { num: 3, html: '<span class="key">port</span> = <span class="str">{{ port }}</span>' },
+      { num: 4, html: '<span class="key">log_level</span> = <span class="str">{{ log_level | default("info") }}</span>' },
+    ],
+  };
+
+  var fileLines = EDIT_FILES[file];
+  if (!fileLines) {
+    fileLines = [];
+    for (var i = 1; i <= Math.max(line + 5, 20); i++) {
+      fileLines.push({ num: i, html: i === line ? '<span class="comment"># ← violation: ' + rule + '</span>' : '' });
+    }
+  }
+
+  var html = '';
+  fileLines.forEach(function(l) {
+    var cls = 'editor-line';
+    if (l.num === line) cls += ' diff-removed diff-gutter-removed';
+    html += '<div class="' + cls + '"><span class="line-number">' + l.num + '</span><span class="line-content">' + l.html + '</span></div>';
+  });
+
+  document.getElementById('editor').innerHTML = '<div class="diff-pane" style="flex:1;">' + html + '</div>';
+
+  var violationLine = document.querySelector('.editor-line.diff-removed');
+  if (violationLine) violationLine.scrollIntoView({ block: 'center' });
+
+} else {
+  document.getElementById('pr-branch-label').textContent = branch;
+  document.getElementById('branch-name').textContent = branch;
+  document.getElementById('titlebar-text').textContent = 'PR #99 · ' + branch + ' — Dev Spaces';
+  renderDiff('main');
+}
 </script>
 
 </body>
